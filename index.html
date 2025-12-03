@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Noise Sensitivity</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            background: #ffffff;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas size to window size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            drawVisualization();
+        }
+
+        // Animation variables
+        let animationTime = 0;
+
+        function drawVisualization() {
+            const width = canvas.width;
+            const height = canvas.height;
+            const centerX = width / 2;
+
+            // Clear canvas
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+
+            // Number of bars based on screen width
+            const barWidth = 20;
+            const barSpacing = 4;
+            const totalBarWidth = barWidth + barSpacing;
+            const numBars = Math.ceil(width / totalBarWidth) + 2;
+            const startX = -(animationTime * 0.5 % totalBarWidth);
+
+            // Draw bars
+            for (let i = 0; i < numBars; i++) {
+                const x = startX + i * totalBarWidth;
+                const distanceFromCenter = Math.abs(x + barWidth / 2 - centerX);
+                const normalizedDistance = distanceFromCenter / (width / 2);
+
+                // Calculate bar properties based on distance from center
+                const centerIntensity = 1 - normalizedDistance;
+                const baseHeight = height * 0.6;
+
+                // Add noise variation
+                const noiseOffset = Math.sin(animationTime * 0.002 + i * 0.3) * 0.15 +
+                                  Math.sin(animationTime * 0.003 + i * 0.17) * 0.1;
+
+                // Height varies more in the center
+                const heightVariation = (centerIntensity * 0.4 + 0.1) * noiseOffset;
+                const barHeight = baseHeight + baseHeight * heightVariation;
+
+                // Darkness increases toward center
+                const darkness = Math.pow(centerIntensity, 1.5) * 0.6;
+                const baseGray = 240 - darkness * 150;
+
+                // Y position (centered vertically)
+                const y = (height - barHeight) / 2;
+
+                // Create gradient for bar
+                const gradient = ctx.createLinearGradient(0, y, 0, y + barHeight);
+
+                // Top fade
+                gradient.addColorStop(0, `rgb(${255}, ${255}, ${255})`);
+                gradient.addColorStop(0.1, `rgb(${baseGray + 30}, ${baseGray + 30}, ${baseGray + 30})`);
+
+                // Middle (darkest)
+                gradient.addColorStop(0.5, `rgb(${baseGray}, ${baseGray}, ${baseGray})`);
+
+                // Bottom fade
+                gradient.addColorStop(0.9, `rgb(${baseGray + 30}, ${baseGray + 30}, ${baseGray + 30})`);
+                gradient.addColorStop(1, `rgb(${255}, ${255}, ${255})`);
+
+                // Draw bar
+                ctx.fillStyle = gradient;
+
+                // Add slight blur to center bars
+                if (centerIntensity > 0.3) {
+                    ctx.shadowBlur = centerIntensity * 8;
+                    ctx.shadowColor = `rgba(0, 0, 0, ${centerIntensity * 0.2})`;
+                } else {
+                    ctx.shadowBlur = 0;
+                }
+
+                // Rounded rectangle for softer appearance
+                drawRoundedRect(ctx, x, y, barWidth, barHeight, 2);
+            }
+        }
+
+        function drawRoundedRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function animate() {
+            animationTime++;
+            drawVisualization();
+            requestAnimationFrame(animate);
+        }
+
+        // Initialize
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        animate();
+    </script>
+</body>
+</html>
