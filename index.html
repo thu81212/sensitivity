@@ -35,7 +35,7 @@
             width: 8px;
             height: 70%;
             background: #d0d0d0;
-            transition: background-color 0.1s ease, height 0.1s ease;
+            transition: background-color 0.05s ease-out, height 0.05s ease-out;
         }
     </style>
 </head>
@@ -45,8 +45,8 @@
     <script>
         // Configuration
         const NUM_BARS = 50;
-        const BASE_HEIGHT = 70; // percentage
-        const MAX_HEIGHT = 90; // percentage
+        const BASE_HEIGHT = 40; // percentage
+        const MAX_HEIGHT = 95; // percentage
 
         // Audio variables
         let audioContext;
@@ -55,16 +55,26 @@
         let source;
         let currentNoiseLevel = 0;
         let isMicActive = false;
+        let animationFrame = 0;
 
-        // Create bars
+        // Create bars with random properties
         const strip = document.getElementById('noise-strip');
         const bars = [];
+        const barRandomness = []; // Store random characteristics for each bar
 
         for (let i = 0; i < NUM_BARS; i++) {
             const bar = document.createElement('div');
             bar.className = 'bar';
             strip.appendChild(bar);
             bars.push(bar);
+
+            // Each bar gets unique random properties
+            barRandomness.push({
+                heightOffset: Math.random() * 0.3 + 0.85, // 0.85-1.15 multiplier
+                sensitivityOffset: Math.random() * 0.5 + 0.75, // 0.75-1.25 multiplier
+                phaseOffset: Math.random() * Math.PI * 2, // Random phase for animation
+                flickerSpeed: Math.random() * 0.02 + 0.01 // Random animation speed
+            });
         }
 
         // Calculate static gradient (darker in center, lighter on sides)
@@ -133,6 +143,8 @@
 
         // Update bars based on noise level
         function updateBars(noiseLevel) {
+            animationFrame++;
+
             bars.forEach((bar, i) => {
                 const center = NUM_BARS / 2;
                 const distanceFromCenter = Math.abs(i - center);
@@ -141,16 +153,35 @@
                 // Center bars are more affected by noise
                 const centerIntensity = 1 - Math.pow(normalizedDistance, 1.5);
 
-                // Calculate gray value
+                // Get this bar's unique random properties
+                const random = barRandomness[i];
+
+                // Add organic wave motion with random phase
+                const waveMotion = Math.sin(animationFrame * random.flickerSpeed + random.phaseOffset);
+                const waveMotion2 = Math.sin(animationFrame * random.flickerSpeed * 0.7 + random.phaseOffset * 1.3);
+
+                // Calculate gray value with randomness
                 const staticGray = getStaticGrayValue(i);
 
-                // Add noise effect: darker and taller in center when noise increases
-                const noiseDarkening = noiseLevel * centerIntensity * 80;
-                const newGray = Math.max(40, staticGray - noiseDarkening);
+                // More dramatic darkening with random variations
+                const noiseDarkening = noiseLevel * centerIntensity * random.sensitivityOffset * 120;
+                const randomDarkVariation = waveMotion * 15 * noiseLevel;
+                const newGray = Math.max(30, staticGray - noiseDarkening + randomDarkVariation);
 
-                // Height increases with noise in center
-                const heightIncrease = noiseLevel * centerIntensity * (MAX_HEIGHT - BASE_HEIGHT);
-                const newHeight = BASE_HEIGHT + heightIncrease;
+                // Much bigger height variations with randomness
+                const baseHeightIncrease = noiseLevel * centerIntensity * (MAX_HEIGHT - BASE_HEIGHT);
+                const randomHeightVariation = waveMotion * 15 * noiseLevel + waveMotion2 * 10 * noiseLevel;
+                const individualRandomHeight = random.heightOffset;
+
+                let newHeight = (BASE_HEIGHT + baseHeightIncrease) * individualRandomHeight + randomHeightVariation;
+
+                // Add more dramatic random spikes
+                if (Math.random() < noiseLevel * 0.3) {
+                    newHeight += Math.random() * 20 * noiseLevel;
+                }
+
+                // Clamp height
+                newHeight = Math.max(20, Math.min(MAX_HEIGHT, newHeight));
 
                 bar.style.backgroundColor = `rgb(${newGray}, ${newGray}, ${newGray})`;
                 bar.style.height = `${newHeight}%`;
@@ -161,12 +192,15 @@
         function animate() {
             if (!isMicActive) return;
 
-            currentNoiseLevel = getNoiseLevel();
+            const rawNoiseLevel = getNoiseLevel();
 
-            // Smooth the noise level
-            currentNoiseLevel = currentNoiseLevel * 0.3 + currentNoiseLevel * 0.7;
+            // Less smoothing for more responsive, dynamic feel
+            currentNoiseLevel = currentNoiseLevel * 0.6 + rawNoiseLevel * 0.4;
 
-            updateBars(currentNoiseLevel);
+            // Amplify the noise level for bigger visual effect
+            const amplifiedNoise = Math.min(1, currentNoiseLevel * 1.5);
+
+            updateBars(amplifiedNoise);
 
             requestAnimationFrame(animate);
         }
